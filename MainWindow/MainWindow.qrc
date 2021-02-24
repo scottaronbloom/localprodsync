@@ -1,0 +1,14 @@
+<RCC>
+    <qresource prefix="/">
+        <file>resources/application.png</file>
+        <file>resources/download.png</file>
+        <file>resources/plus.png</file>
+        <file>resources/del.png</file>
+        <file>resources/left.png</file>
+        <file>resources/right.png</file>
+        <file>resources/edit.png</file>
+        <file>resources/open.png</file>
+        <file>resources/generate.png</file>
+        <file>resources/wizard.png</file>
+    </qresource>
+</RCC>
