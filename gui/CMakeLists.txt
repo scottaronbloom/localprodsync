@@ -24,6 +24,7 @@ project(LocalProdSyncGUI)
 
 include( include.cmake )
 include( ${CMAKE_SOURCE_DIR}/SABUtils/Project.cmake )
+find_package(Qt5 COMPONENTS Widgets Xml XmlPatterns REQUIRED)
 
 add_executable( LocalProdSyncGUI WIN32
                  ${project_SRCS} 
@@ -45,6 +46,7 @@ set_target_properties( LocalProdSyncGUI PROPERTIES FOLDER Apps )
 target_link_libraries( LocalProdSyncGUI 
                  Qt5::Widgets
                  Qt5::Core
+                 Qt5::XmlPatterns
                  MainWindow
                  MainLib
                  SABUtils

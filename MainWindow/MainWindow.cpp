@@ -22,6 +22,7 @@
 
 #include "MainWindow.h"
 #include "AddAttribute.h"
+#include "MainLib/DataFile.h"
 
 #include "ui_MainWindow.h"
 
@@ -30,36 +31,49 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QItemSelectionModel>
-#include <QJsonDocument>
-#include <QJsonArray>
 #include <QTimer>
 #include <QItemSelection>
+#include <QTextCursor>
 
 CMainWindow::CMainWindow( QWidget * parent )
     : QDialog( parent ),
     fImpl( new Ui::CMainWindow )
 {
     fImpl->setupUi( this );
-    fUProdModel = new QFileSystemModel( this );
-    fUProdModel->setReadOnly( true );
-    fUProdModel->setResolveSymlinks( true );
-    fUProdModel->setFilter( QDir::AllDirs | QDir::NoDotAndDotDot );
+    fRuntimeTimer.first = new QTimer( this );
+    fRuntimeTimer.first->setSingleShot( false );
+    fRuntimeTimer.first->setInterval( 500 );
+    fRuntimeTimer.first->callOnTimeout( this, &CMainWindow::slotUpdateRuntimeLabel );
 
-    connect( fUProdModel, &QFileSystemModel::directoryLoaded, this, &CMainWindow::slotPathLoaded );
-    connect( fImpl->uProdDirBtn, &QToolButton::clicked, this, &CMainWindow::slotSelectUProdDir );
+    fLocalUProdModel = new QFileSystemModel( this );
+    fLocalUProdModel->setReadOnly( true );
+    fLocalUProdModel->setResolveSymlinks( true );
+    fLocalUProdModel->setFilter( QDir::AllDirs | QDir::NoDotAndDotDot );
+
+    connect( fLocalUProdModel, &QFileSystemModel::directoryLoaded, this, &CMainWindow::slotPathLoaded );
+    connect( fImpl->localUProdDirBtn, &QToolButton::clicked, this, &CMainWindow::slotSelectLocalUProdDir );
     connect( fImpl->localProdDirBtn, &QToolButton::clicked, this, &CMainWindow::slotSelectLocalProdDir );
     connect( fImpl->dataFileBtn, &QToolButton::clicked, this, &CMainWindow::slotSelectDataFile );
     connect( fImpl->saveDataFileBtn, &QToolButton::clicked, this, &CMainWindow::slotSaveDataFile );
     
     connect( fImpl->rsyncExecBtn, &QToolButton::clicked, this, &CMainWindow::slotSelectRSyncExec );
-    
-    connect( fImpl->delItemBtn, &QPushButton::clicked, this, &CMainWindow::slotDelItem );
-    connect( fImpl->addItemBtn, &QPushButton::clicked, this, &CMainWindow::slotAddItem );
-    connect( fImpl->editItemBtn, &QPushButton::clicked, this, &CMainWindow::slotEditLocalProdDirItem );
+    connect( fImpl->bashExecBtn, &QToolButton::clicked, this, &CMainWindow::slotSelectBashExec );
+
+    connect( fImpl->delItemBtn, &QToolButton::clicked, this, &CMainWindow::slotDelItem );
+    connect( fImpl->addItemBtn, &QToolButton::clicked, this, &CMainWindow::slotAddItem );
+    connect( fImpl->addAsExcludeBtn, &QToolButton::clicked, this, &CMainWindow::slotAddAsExclude );
+    connect( fImpl->editItemBtn, &QToolButton::clicked, this, &CMainWindow::slotEditLocalProdDirItem );
     connect( fImpl->localProdDirTree, &QTreeWidget::itemDoubleClicked, this, &CMainWindow::slotEditLocalProdDirItem );
 
-    fImpl->uProdDirTree->setModel( this->fUProdModel );
+    connect( fImpl->runBtn, &QPushButton::clicked, this, &CMainWindow::slotRun );
+    connect( fImpl->stopBtn, &QPushButton::clicked, this, &CMainWindow::slotStop );
+
+    fImpl->uProdDirTree->setModel( this->fLocalUProdModel );
+    fImpl->uProdDirTree->hideColumn( 1 );
+    fImpl->uProdDirTree->hideColumn( 2 );
+
     fImpl->localProdDirTree->setHeaderLabels( QStringList() << "Directory" << "Exclude" << "Extra" );
+    setRunning( false );
     QTimer::singleShot( 0, this, &CMainWindow::loadSettings );
     popDisconnected( true );
 }
@@ -69,22 +83,83 @@ CMainWindow::~CMainWindow()
     saveSettings();
 }
 
+NLoadProdSync::EDrivePrefix CMainWindow::getDrivePrefix() const
+{
+    if ( fImpl->rsyncNative->isChecked() )
+        return NLoadProdSync::EDrivePrefix::eNative;
+    else if ( fImpl->rsyncCygwin->isChecked() )
+        return NLoadProdSync::EDrivePrefix::eCygwin;
+    else if ( fImpl->rsyncMSys64->isChecked() )
+        return NLoadProdSync::EDrivePrefix::eMSys64;
+    return NLoadProdSync::EDrivePrefix::eNative;
+}
+
+NLoadProdSync::EDrivePrefix CMainWindow::autoGetDrivePrefix() const
+{
+    auto path = fImpl->rsyncExec->text();
+    if ( path.contains( "cygwin", Qt::CaseInsensitive ) )
+        return NLoadProdSync::EDrivePrefix::eCygwin;
+    if ( path.contains( "msys64", Qt::CaseInsensitive ) )
+        return NLoadProdSync::EDrivePrefix::eMSys64;
+
+    return NLoadProdSync::EDrivePrefix::eNative;
+}
+
 void CMainWindow::saveSettings()
 {
+    slotSaveDataFile();
+
     QSettings settings;
 
-    settings.setValue( "uProdDir", fImpl->uProdDir->text() );
+    settings.setValue( "remoteUProdDir", fImpl->remoteUProdDir->text() );
+    settings.setValue( "localUProdDir", fImpl->localUProdDir->text() );
     settings.setValue( "localProdDir", fImpl->localProdDir->text() );
     settings.setValue( "dataFile", fImpl->dataFile->text() );
     settings.setValue( "rsyncServer", fImpl->rsyncServer->text() );
     settings.setValue( "rsyncExec", fImpl->rsyncExec->text() );
+    settings.setValue( "bashExec", fImpl->bashExec->text() );
+    settings.setValue( "rsyncDrivePrefix", (int)getDrivePrefix() );
     settings.setValue( "verbose", fImpl->verbose->isChecked() );
-    settings.setValue( "norun", fImpl->norun->text() );
+    settings.setValue( "norun", fImpl->norun->isChecked() );
 }
 
 void CMainWindow::slotSaveDataFile()
 {
+    if ( !isModified() )
+        return;
 
+    if ( !fDataFile )
+        return;
+
+    fDataFile->clear();
+    for ( int ii = 0; ii < fImpl->localProdDirTree->topLevelItemCount(); ++ii )
+    {
+        auto item = fImpl->localProdDirTree->topLevelItem( ii );
+        if ( !item )
+            continue;
+
+        auto dir = std::make_shared< NLoadProdSync::SDirectory >( item->text( 0 ) );
+        for ( int jj = 0; jj < item->childCount(); ++jj )
+        {
+            auto child = item->child( jj );
+            if ( !child )
+                continue;
+
+            if ( !child->text( 1 ).isEmpty() )
+                dir->fExcludes << child->text( 1 );
+            if ( !child->text( 2 ).isEmpty() )
+                dir->fExtras << child->text( 2 );
+        }
+        fDataFile->addDir( dir );
+    }
+
+    if ( fDataFile->save( this ) )
+    {
+        pushDisconnected();
+        fImpl->dataFile->setText( fDataFile->fileName() );
+        setModified( false );
+        popDisconnected();
+    }
 }
 
 void CMainWindow::loadSettings()
@@ -92,20 +167,30 @@ void CMainWindow::loadSettings()
     pushDisconnected();
 
     QSettings settings;
-    fImpl->uProdDir->setText( settings.value( "uProdDir", "\\\\mgc\\home\\prod" ).toString() );
+    fImpl->remoteUProdDir->setText( settings.value( "remoteUProdDir", "/u/prod" ).toString() );
+    fImpl->localUProdDir->setText( settings.value( "localUProdDir", "\\\\mgc\\home\\prod" ).toString() );
     fImpl->localProdDir->setText( settings.value( "localProdDir", "C:\\localprod" ).toString() );
     auto dataFile = qEnvironmentVariable( "P4_CLIENT_DIR" );
     if ( !dataFile.isEmpty() )
-        dataFile += "/src/misc/WinLocalProdSyncData.json";
+        dataFile += "/src/misc/WinLocalProdSyncData.xml";
     fImpl->dataFile->setText( settings.value( "dataFile", dataFile ).toString() );
     fImpl->rsyncServer->setText( settings.value( "rsyncServer", "local-rsync-vm1.wv.mentorg.com" ).toString() );
-    fImpl->rsyncExec->setText( settings.value( "rsyncExec" ).toString() );
+    fImpl->rsyncExec->setText( settings.value( "rsyncExec", "C:/msys64/usr/bin/rsync.exe" ).toString() );
+    fImpl->bashExec->setText( settings.value( "bashExec", "C:/msys64/usr/bin/bash.exe" ).toString() );
     fImpl->verbose->setChecked( settings.value( "verbose", true ).toBool() );
     fImpl->norun->setChecked( settings.value( "norun", false ).toBool() );
-
+    auto drivePrefix = static_cast<NLoadProdSync::EDrivePrefix>( settings.value( "rsyncDrivePrefix", (int)autoGetDrivePrefix() ).toInt() );
+    if ( drivePrefix == NLoadProdSync::EDrivePrefix::eNative )
+        fImpl->rsyncNative->setChecked( true );
+    else if ( drivePrefix == NLoadProdSync::EDrivePrefix::eCygwin )
+        fImpl->rsyncCygwin->setChecked( true );
+    else if ( drivePrefix == NLoadProdSync::EDrivePrefix::eMSys64 )
+        fImpl->rsyncMSys64->setChecked( true );
 
     popDisconnected();
-    slotChanged();
+
+    QTimer::singleShot( 0, this, &CMainWindow::setLocalUProdDir );
+    QTimer::singleShot( 0, this, &CMainWindow::loadLocalProdDir );
 }
 
 void CMainWindow::popDisconnected( bool force )
@@ -114,12 +199,15 @@ void CMainWindow::popDisconnected( bool force )
         fDisconnected--;
     if ( force || fDisconnected == 0 )
     {
-        connect( fImpl->uProdDir, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
+        connect( fImpl->localUProdDir, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
         connect( fImpl->localProdDir, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
         connect( fImpl->dataFile, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
         connect( fImpl->rsyncServer, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
         connect( fImpl->rsyncExec, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
-        connect( fImpl->verbose, &QCheckBox::clicked, this, &CMainWindow::slotChanged );
+        connect( fImpl->bashExec, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
+        connect( fImpl->rsyncNative, &QRadioButton::clicked, this, &CMainWindow::slotChanged );
+        connect( fImpl->rsyncCygwin, &QRadioButton::clicked, this, &CMainWindow::slotChanged );
+        connect( fImpl->rsyncMSys64, &QRadioButton::clicked, this, &CMainWindow::slotChanged );
         connect( fImpl->norun, &QCheckBox::clicked, this, &CMainWindow::slotChanged );
         connect( fImpl->uProdDirTree->selectionModel(), &QItemSelectionModel::selectionChanged, this, &CMainWindow::slotUProdDirSelectionChanged );
         connect( fImpl->uProdDirTree->selectionModel(), &QItemSelectionModel::selectionChanged, this, &CMainWindow::slotChanged );
@@ -132,11 +220,15 @@ void CMainWindow::pushDisconnected()
 {
     if ( fDisconnected == 0 )
     {
-        disconnect( fImpl->uProdDir, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
+        disconnect( fImpl->localUProdDir, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
         disconnect( fImpl->localProdDir, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
         disconnect( fImpl->dataFile, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
         disconnect( fImpl->rsyncServer, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
         disconnect( fImpl->rsyncExec, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
+        disconnect( fImpl->bashExec, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
+        disconnect( fImpl->rsyncNative, &QRadioButton::clicked, this, &CMainWindow::slotChanged );
+        disconnect( fImpl->rsyncCygwin, &QRadioButton::clicked, this, &CMainWindow::slotChanged );
+        disconnect( fImpl->rsyncMSys64, &QRadioButton::clicked, this, &CMainWindow::slotChanged );
         disconnect( fImpl->verbose, &QCheckBox::clicked, this, &CMainWindow::slotChanged );
         disconnect( fImpl->norun, &QCheckBox::clicked, this, &CMainWindow::slotChanged );
         disconnect( fImpl->uProdDirTree->selectionModel(), &QItemSelectionModel::selectionChanged, this, &CMainWindow::slotUProdDirSelectionChanged );
@@ -150,22 +242,20 @@ void CMainWindow::pushDisconnected()
 void CMainWindow::appendToLog( const QString & txt )
 {
     fImpl->log->appendPlainText( txt.trimmed() );
+    fImpl->log->moveCursor( QTextCursor::End );
 }
 
 void CMainWindow::slotChanged()
 {
-    if ( uProdDirChanged() )
-        loadUProdDir();
+    if ( localUProdDirChanged() )
+        setLocalUProdDir();
 
     if ( localProdDirChanged() )
         loadLocalProdDir();
 
     bool aOK = !fUProdLoading;
-    auto fi = QFileInfo( fImpl->uProdDir->text() );
+    auto fi = QFileInfo( fImpl->localUProdDir->text() );
     aOK = aOK && fi.exists() && fi.isDir() && fi.isReadable();
-
-    fi = QFileInfo( fImpl->localProdDir->text() );
-    aOK = aOK && fi.exists() && fi.isDir() && fi.isWritable();
 
     fi = QFileInfo( fImpl->dataFile->text() );
     aOK = aOK && fi.exists() && fi.isFile() && fi.isReadable();
@@ -176,8 +266,15 @@ void CMainWindow::slotChanged()
     fi = QFileInfo( fImpl->rsyncExec->text() );
     aOK = aOK && fi.exists() && fi.isFile() && fi.isExecutable();
 
+    if ( !fImpl->rsyncNative->isChecked() )
+    {
+        fi = QFileInfo( fImpl->bashExec->text() );
+        aOK = aOK && fi.exists() && fi.isFile() && fi.isExecutable();
+    }
+    setRunning( false );
     fImpl->runBtn->setEnabled( aOK );
-
+    
+    fImpl->addAsExcludeBtn->setEnabled( !fImpl->uProdDirTree->selectionModel()->selection().isEmpty() && !fImpl->localProdDirTree->selectionModel()->selection().isEmpty() );
     fImpl->addItemBtn->setEnabled( !fImpl->uProdDirTree->selectionModel()->selection().isEmpty() );
     fImpl->delItemBtn->setEnabled( !fImpl->localProdDirTree->selectionModel()->selection().isEmpty() );
     fImpl->editItemBtn->setEnabled( !fImpl->localProdDirTree->selectionModel()->selection().isEmpty() );
@@ -225,6 +322,19 @@ QString CMainWindow::getSelectedLocalProdDirPath() const
     return dir;
 }
 
+void CMainWindow::setModified( bool modified )
+{
+    setWindowTitle( tr( "Local Prod Sync Tool%1" ).arg( modified ? "*" : "" ) );
+    fModified = modified;
+}
+
+bool CMainWindow::isModified() const
+{
+    if ( fModified )
+        return true;
+    return ( QFileInfo( fImpl->dataFile->text() ).suffix() == "json" );
+}
+
 QString CMainWindow::getSelectedUProdDirPath() const
 {
     auto selected = fImpl->uProdDirTree->selectionModel()->selectedIndexes();
@@ -236,11 +346,11 @@ QString CMainWindow::getSelectedUProdDirPath() const
     dir = dir.replace( "\\", "/" );
     dir = dir.replace( "//", "" );
 
-    auto uProdDir = fImpl->uProdDir->text();
-    uProdDir = uProdDir.replace( "\\", "/" );
-    uProdDir = uProdDir.replace( "//", "" );
-    if ( dir.startsWith( uProdDir ) )
-        dir = dir.mid( uProdDir.length() + 1 );
+    auto localUProdDir = fImpl->localUProdDir->text();
+    localUProdDir = localUProdDir.replace( "\\", "/" );
+    localUProdDir = localUProdDir.replace( "//", "" );
+    if ( dir.startsWith( localUProdDir ) )
+        dir = dir.mid( localUProdDir.length() + 1 );
 
     return dir;
 }
@@ -255,6 +365,24 @@ QTreeWidgetItem * CMainWindow::getTopItem( QTreeWidgetItem * item ) const
         }
     }
     return item;
+}
+
+QList< QTreeWidgetItem * > CMainWindow::getItems( int columnNum, const QStringList & items )
+{
+    if ( items.isEmpty() )
+        return {};
+
+    auto prefix = QStringList();
+    for ( int ii = 0; ii < columnNum; ++ii )
+        prefix << QString();
+
+    QList< QTreeWidgetItem * > retVal;
+    for ( auto && ii : items )
+    {
+        auto curr = new QTreeWidgetItem( QStringList() << prefix << ii );
+        retVal << curr;
+    }
+    return retVal;
 }
 
 QTreeWidgetItem * CMainWindow::getCurrLocalItem( bool andSelect ) const
@@ -276,25 +404,17 @@ void CMainWindow::selectLocalItem( QTreeWidgetItem * retVal ) const
 
 void CMainWindow::slotLocalProdDirSelectionChanged()
 {
-    //auto dir = getSelectedLocalProdDirPath();
-    //if ( dir.isEmpty() )
-    //    return;
+    auto dir = getSelectedLocalProdDirPath();
+    if ( dir.isEmpty() )
+        return;
 
-    //std::pair< QTreeWidgetItem *, int > firstBeginsWith = { nullptr, 0 };
-    //QPersistentModelIndex  idx = fUProdModel->index( QDir( fImpl->localProdDir->text() ).absoluteFilePath( dir ) );
-    //while( !idx.isValid() )
-    //{
-    //    auto pos = dir.lastIndexOf( "/" );
-    //    if ( pos == -1 )
-    //        break;
-    //    dir = dir.left( pos );
-    //    idx = fUProdModel->index( QDir( fImpl->localProdDir->text() ).absoluteFilePath( dir ) );
-    //}
-
-    //pushDisconnected();
-    //fImpl->uProdDirTree->scrollTo( idx );
-    //fImpl->uProdDirTree->selectionModel()->select( idx, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows );
-    //popDisconnected();
+    dir = QDir( fImpl->localUProdDir->text() ).absoluteFilePath( dir );
+    auto idx = fLocalUProdModel->index( dir );
+    pushDisconnected();
+    fImpl->uProdDirTree->scrollTo( idx );
+    fImpl->uProdDirTree->setCurrentIndex( idx );
+    fImpl->uProdDirTree->selectionModel()->select( idx, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows );
+    popDisconnected();
 }
 
 void CMainWindow::slotUProdDirSelectionChanged()
@@ -326,7 +446,28 @@ void CMainWindow::slotUProdDirSelectionChanged()
         }
     }
 
-    selectLocalItem( firstBeginsWith.first );
+    if ( firstBeginsWith.first )
+        selectLocalItem( firstBeginsWith.first );
+}
+
+void CMainWindow::slotAddAsExclude()
+{
+    auto leafName = QFileInfo( getSelectedUProdDirPath() ).fileName();
+    if ( leafName.isEmpty() )
+        return;
+
+    auto currItem = getCurrLocalItem( true );
+    auto items = getItems( 1, { leafName } );
+    currItem->addChildren( items );
+    currItem->setExpanded( true );
+    auto newChild = items.isEmpty() ? items.front() : nullptr;
+    if ( newChild )
+    {
+        newChild->setSelected( true );
+        fImpl->localProdDirTree->scrollToItem( newChild );
+    }
+
+    setModified( true );
 }
 
 void CMainWindow::slotAddItem()
@@ -336,11 +477,10 @@ void CMainWindow::slotAddItem()
         return;
 
     auto currItem = getCurrLocalItem( true );
-    if ( !currItem )
-        return;
 
     auto newItem = new QTreeWidgetItem( QStringList() << dir );
     fImpl->localProdDirTree->insertTopLevelItem( fImpl->localProdDirTree->indexOfTopLevelItem( currItem )+1, newItem );
+    setModified( true );
 }
 
 void CMainWindow::slotDelItem()
@@ -350,6 +490,7 @@ void CMainWindow::slotDelItem()
         return;
 
     delete currItem;
+    setModified( true );
 }
 
 void CMainWindow::slotEditLocalProdDirItem()
@@ -364,14 +505,15 @@ void CMainWindow::slotEditLocalProdDirItem()
         auto idx = fImpl->localProdDirTree->indexOfTopLevelItem( currItem );
         loadItem( idx, dlg.dir(), dlg.excludes(), dlg.extras() );
         delete currItem;
+        setModified( true );
     }
 }
 
-bool CMainWindow::uProdDirChanged() const
+bool CMainWindow::localUProdDirChanged() const
 {
-    if ( !fCurrUProdDir.has_value() )
+    if ( !fCurrLocalUProdDir.has_value() )
         return true;
-    return fCurrUProdDir.value() != QDir( fImpl->uProdDir->text() );
+    return fCurrLocalUProdDir.value() != QDir( fImpl->localUProdDir->text() );
 }
 
 bool CMainWindow::localProdDirChanged() const
@@ -387,9 +529,9 @@ bool CMainWindow::localProdDirChanged() const
     return false;
 }
 
-void CMainWindow::slotSelectUProdDir()
+void CMainWindow::slotSelectLocalUProdDir()
 {
-    auto currPath = fImpl->uProdDir->text();
+    auto currPath = fImpl->localUProdDir->text();
     auto path = QFileDialog::getExistingDirectory( this, tr( "Select U Prod Directory" ), currPath );
     if ( path.isEmpty() )
         return;
@@ -400,7 +542,7 @@ void CMainWindow::slotSelectUProdDir()
         return;
     }
 
-    fImpl->uProdDir->setText( path );
+    fImpl->localUProdDir->setText( path );
 }
 
 void CMainWindow::slotSelectLocalProdDir()
@@ -423,7 +565,7 @@ void CMainWindow::slotSelectLocalProdDir()
 void CMainWindow::slotSelectDataFile()
 {
     auto currPath = fImpl->dataFile->text();
-    auto path = QFileDialog::getOpenFileName( this, tr( "Select Data File" ), currPath, "JSON Data Files *.json;;All Files *.*" );
+    auto path = QFileDialog::getOpenFileName( this, tr( "Select Data File" ), currPath, "XML Data Files *.xml;;JSON Data Files *.json;;All Files *.*" );
     if ( path.isEmpty() )
         return;
 
@@ -454,65 +596,60 @@ void CMainWindow::slotSelectRSyncExec()
     fImpl->rsyncExec->setText( path );
 }
 
-
-void CMainWindow::loadUProdDir()
+void CMainWindow::slotSelectBashExec()
 {
-    if ( !uProdDirChanged() )
+    auto currPath = fImpl->dataFile->text();
+    auto path = QFileDialog::getOpenFileName( this, tr( "Select Bash Executable" ), currPath, "Executable Files *.exe" );
+    if ( path.isEmpty() )
         return;
 
+    auto fi = QFileInfo( path );
+    if ( !fi.exists() || !fi.isFile() || !fi.isExecutable() )
+    {
+        QMessageBox::warning( this, "Invalid Bash Executable File", QString( "'%1' is not a file that is executable" ).arg( path ) );
+        return;
+    }
+
+    fImpl->bashExec->setText( path );
+}
+
+void CMainWindow::setLocalUProdDir()
+{
+    if ( !localUProdDirChanged() )
+        return;
+
+    pushDisconnected();
     QApplication::setOverrideCursor( Qt::WaitCursor );
-    fCurrUProdDir = QDir( fImpl->uProdDir->text() );
+    fCurrLocalUProdDir = QDir( fImpl->localUProdDir->text() );
     qApp->processEvents();
     fUProdLoading = true;
     setEnabled( false );
-    slotChanged();
-    auto path = fCurrUProdDir.value().absolutePath();
-    fUProdModel->setRootPath( path );
-    fImpl->uProdDirTree->setRootIndex( fUProdModel->index( path ) );
+    qApp->processEvents();
+    auto path = fCurrLocalUProdDir.value().absolutePath();
+    fImpl->uProdDirTree->setRootIndex( fLocalUProdModel->index( path ) );
+    fLocalUProdModel->setRootPath( path );
+    popDisconnected();
 }
 
-void CMainWindow::slotPathLoaded()
+void CMainWindow::slotPathLoaded( const QString & path )
 {
-    QApplication::restoreOverrideCursor();
-    fUProdLoading = false;
-    setEnabled( true );
-    slotChanged();
-}
-
-std::optional< QStringList > getStringList( const QString & tagName, const QJsonValue & value )
-{
-    QStringList retVal;
-    if ( !value[ tagName ].isUndefined() )
+    qDebug() << "Path Loaded: " << path;
+    if ( QDir( path ) == QDir( fImpl->localUProdDir->text() ) )
     {
-        if ( !value[ tagName ].isArray() )
+        QApplication::restoreOverrideCursor();
+        fUProdLoading = false;
+        setEnabled( true );
+        slotChanged();
+    }
+    else
+    {
+        auto idx = fLocalUProdModel->index( path );
+        auto selected = fImpl->uProdDirTree->currentIndex();
+        if ( selected.parent() == idx )
         {
-            return {};
-        }
-        auto currObj = value[ tagName ].toArray();
-        for ( auto && curr : currObj )
-        {
-            retVal << curr.toString();
+            fImpl->uProdDirTree->scrollTo( idx );
         }
     }
-    return retVal;
-}
-
-QList< QTreeWidgetItem * > getItems( int columnNum, const QStringList & items )
-{
-    if ( items.isEmpty() )
-        return {};
-
-    auto prefix = QStringList();
-    for ( int ii = 0; ii < columnNum; ++ii )
-        prefix << QString();
-
-    QList< QTreeWidgetItem * > retVal;
-    for ( auto && ii : items )
-    {
-        auto curr = new QTreeWidgetItem( QStringList() << prefix << ii );
-        retVal << curr;
-    }
-    return retVal;
 }
 
 void CMainWindow::loadLocalProdDir()
@@ -523,38 +660,17 @@ void CMainWindow::loadLocalProdDir()
     fImpl->localProdDirTree->clear();
     fImpl->localProdDirTree->setHeaderLabels( QStringList() << "Directory" << "Exclude" << "Extra" );
 
-    auto file = QFile( fImpl->dataFile->text() );
-    if ( !file.open( QIODevice::ReadOnly | QIODevice::Text ) )
-        return;
-    auto jsonText = file.readAll();
-    file.close();
-    auto jsonData = QJsonDocument::fromJson( jsonText );
-    auto dirObj = jsonData[ "directories" ];
-    if ( !dirObj.isArray() )
+    fDataFile = std::make_shared< NLoadProdSync::CDataFile >();
+    if ( !fDataFile->load( fImpl->dataFile->text(), this ) )
     {
-        QMessageBox::warning( this, "Invalid JSON file", QString( "'%1' is not a valid JSON file" ).arg( fImpl->dataFile->text() ) );
+        fDataFile->clear();
+        fCurrDataFile.reset();
+        fCurrLocalProdDir.reset();
         return;
     }
-
-    auto dirs = dirObj.toArray();
-    for ( int ii = 0; ii < dirs.count(); ++ii )
+    for ( auto && ii : fDataFile->dirs() )
     {
-        const auto && currDir = dirs.at( ii );
-        if ( currDir[ "src" ].isNull() )
-        {
-            QMessageBox::warning( this, "Invalid JSON file", QString( "'%1' is not a valid JSON file" ).arg( fImpl->dataFile->text() ) );
-            return;
-        }
-        auto src = currDir[ "src" ].toString();
-
-        auto excludes = getStringList( "exclude", currDir );
-        auto extras = getStringList( "extra", currDir );
-        if ( !excludes.has_value() || !extras.has_value() )
-        {
-            QMessageBox::warning( this, "Invalid JSON file", QString( "'%1' is not a valid JSON file" ).arg( fImpl->dataFile->text() ) );
-            return;
-        }
-        loadItem( -1, src, excludes.value(), extras.value() );
+        loadItem( -1, ii->fPath, ii->fExcludes, ii->fExtras );
     }
 
     fCurrDataFile = QFileInfo( fImpl->dataFile->text() );
@@ -573,4 +689,71 @@ void CMainWindow::loadItem( int pos, const QString & src, const QStringList & ex
         fImpl->localProdDirTree->addTopLevelItem( currItem );
     else
         fImpl->localProdDirTree->insertTopLevelItem( pos, currItem );
+}
+
+void CMainWindow::setRunning( bool running )
+{
+    fImpl->stopBtn->setEnabled( running );
+    fImpl->runBtn->setEnabled( !running );
+    fImpl->runtimeLabel->setVisible( running );
+}
+
+void CMainWindow::slotUpdateRuntimeLabel()
+{
+    auto now = std::chrono::system_clock::now();
+    auto elapsedTime = now - fRuntimeTimer.second;
+
+    double secs = 1.0 * std::chrono::duration_cast<std::chrono::seconds>( elapsedTime ).count();
+    auto hours = std::chrono::duration_cast<std::chrono::hours>( elapsedTime ).count();
+    auto mins = std::chrono::duration_cast<std::chrono::minutes>( elapsedTime ).count();
+
+    secs -= ( ( mins * 60 ) + ( hours * 3600 ) );
+
+    QString text = QString( "Runtime %1:%2:%3" ).arg( hours, 2, 10, QChar( '0' ) ).arg( mins, 2, 10, QChar( '0' ) ).arg( static_cast<int>( secs ), 2, 10, QChar( '0' ) );
+    fImpl->runtimeLabel->setText( text );
+}
+
+void CMainWindow::slotRun()
+{
+    saveSettings();
+    setRunning( true );
+    fImpl->runtimeLabel->setText( "Runtime 00:00:00" );
+    fRuntimeTimer.second = std::chrono::system_clock::now();
+    fRuntimeTimer.first->start();
+
+    if ( fDataFile )
+    {
+        fImpl->log->clear();
+        auto retVal = fDataFile->run( fImpl->remoteUProdDir->text(), fImpl->rsyncServer->text(), fImpl->localProdDir->text(), fImpl->rsyncExec->text(), fImpl->bashExec->text(), fImpl->verbose->isChecked(), fImpl->norun->isChecked(), getDrivePrefix(),
+                        [this]( const QString & msg )
+                        {
+/*
+Number of files: 17 (reg: 6, dir: 11)
+Number of created files: 0
+Number of regular files transferred: 0
+Total file size: 478,738 bytes
+Total transferred file size: 0 bytes
+Literal data: 0 bytes
+Matched data: 0 bytes
+File list size: 367
+File list generation time: 0.002 seconds
+File list transfer time: 0.000 seconds
+Total bytes sent: 73
+Total bytes received: 437
+
+sent 73 bytes  received 437 bytes  340.00 bytes/sec
+total size is 478,738  speedup is 938.70
+*/
+                            appendToLog( msg );
+                        } );
+        if ( !retVal.first )
+            appendToLog( retVal.second );
+    }
+    setRunning( false );
+}
+
+void CMainWindow::slotStop()
+{
+    if ( fDataFile )
+        fDataFile->stop();
 }

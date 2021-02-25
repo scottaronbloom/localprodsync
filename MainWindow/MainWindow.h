@@ -27,11 +27,18 @@
 #include <QDir>
 #include <QFileInfo>
 #include <optional>
+#include <chrono>
+#include <QPersistentModelIndex>
 
 class QFileSystemModel;
 class QTreeWidgetItem;
 class QItemSelection;
 namespace Ui {class CMainWindow;};
+namespace NLoadProdSync
+{
+    class CDataFile;
+    enum class EDrivePrefix;
+}
 
 class CMainWindow : public QDialog
 {
@@ -40,30 +47,40 @@ public:
     CMainWindow(QWidget *parent = 0);
     ~CMainWindow();
 
+    NLoadProdSync::EDrivePrefix getDrivePrefix() const; // based on radio button settings defaults to native
+    NLoadProdSync::EDrivePrefix autoGetDrivePrefix() const; // based on the rsync executable path default to native
+
 public Q_SLOTS:
     void slotChanged();
     void slotUProdDirSelectionChanged();
     void slotLocalProdDirSelectionChanged();
-    bool uProdDirChanged() const;
-    bool localProdDirChanged() const;
-    void slotPathLoaded();
-    void slotSelectUProdDir();
+    void slotPathLoaded( const QString & path );
+    void slotSelectLocalUProdDir();
     void slotSelectLocalProdDir();
     void slotSelectDataFile();
     void slotSelectRSyncExec();
+    void slotSelectBashExec();
 
     void slotDelItem();
     void slotAddItem();
+    void slotAddAsExclude();
     void slotEditLocalProdDirItem();
     void slotSaveDataFile();
+    void slotRun();
+    void slotStop();
+    void slotUpdateRuntimeLabel();
 private:
+    bool localUProdDirChanged() const;
+    bool localProdDirChanged() const;
+    void setModified( bool modified );
+    bool isModified() const;
     QString getSelectedUProdDirPath() const;
     QString getSelectedLocalProdDirPath() const;
     QTreeWidgetItem * getCurrLocalItem( bool andSelect ) const;
-
     void selectLocalItem( QTreeWidgetItem * retVal ) const;
-
     QTreeWidgetItem * getTopItem( QTreeWidgetItem * item ) const;
+
+    QList< QTreeWidgetItem * > getItems( int columnNum, const QStringList & items );
 
     void loadSettings();
     void saveSettings();
@@ -71,20 +88,24 @@ private:
     void popDisconnected( bool force = false );
     void appendToLog( const QString & txt );
 
-    void loadUProdDir();
+    void setLocalUProdDir();
     void loadLocalProdDir();
 
     void loadItem( int pos, const QString & src, const QStringList & excludes, const QStringList & extras );
+    void setRunning( bool running );
 
-    std::optional< QDir > fCurrUProdDir;
+    std::optional< QDir > fCurrLocalUProdDir;
     std::optional< QFileInfo > fCurrDataFile;
     std::optional< QDir > fCurrLocalProdDir;
 
-    QFileSystemModel * fUProdModel{ nullptr };
+    QFileSystemModel * fLocalUProdModel{ nullptr };
 
     int fDisconnected{ 0 };
     bool fUProdLoading{ false };
+    bool fModified{ false };
+    std::shared_ptr< NLoadProdSync::CDataFile > fDataFile;
+    std::pair< QTimer *, std::chrono::system_clock::time_point > fRuntimeTimer;
     std::unique_ptr< Ui::CMainWindow > fImpl;
 };
 
-#endif // _ALCULATOR_H
+#endif 

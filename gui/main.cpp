@@ -67,13 +67,13 @@ bool variantLessThan( const QVariant & v1, const QVariant & v2 )
 int main( int argc, char ** argv )
 {
     QApplication appl( argc, argv );
-    appl.setApplicationName( "VSProjectMaker" );
-    appl.setApplicationVersion( "0.9" );
+    appl.setApplicationName( "LocalProdSyncTool" );
+    appl.setApplicationVersion( "0.1" );
     appl.setOrganizationName( "Scott Aron Bloom" );
     appl.setOrganizationDomain( "www.towel42.com" );
 
     Q_INIT_RESOURCE( MainWindow );
-    Q_INIT_RESOURCE( MainLib );
+    //Q_INIT_RESOURCE( MainLib );
     CMainWindow mainWindow;
     return mainWindow.exec();
 }

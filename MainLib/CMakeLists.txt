@@ -20,38 +20,28 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-project(LocalProdSyncCLI) 
+cmake_minimum_required(VERSION 3.1)
+if(CMAKE_VERSION VERSION_LESS "3.7.0")
+    set(CMAKE_INCLUDE_CURRENT_DIR ON)
+endif()
+project( MainLib )
 
 include( include.cmake )
 include( ${CMAKE_SOURCE_DIR}/SABUtils/Project.cmake )
+find_package(Qt5 COMPONENTS Widgets Xml XmlPatterns REQUIRED)
+AddQtIncludes()
 
-add_executable( LocalProdSyncCLI
-                 ${project_SRCS} 
-                 ${project_H} 
-                 ${qtproject_SRCS} 
-                 ${qtproject_QRC} 
-                 ${qtproject_QRC_SRCS} 
-                 ${qtproject_UIS_H} 
-                 ${qtproject_MOC_SRCS} 
-                 ${qtproject_H} 
-                 ${qtproject_UIS}
-                 ${qtproject_QRC_SOURCES}
-                 ${_CMAKE_FILES}
-                 ${_CMAKE_MODULE_FILES}
-                application.rc
-          )
-set_target_properties( LocalProdSyncCLI PROPERTIES FOLDER Apps )
-          
-target_link_libraries( LocalProdSyncCLI 
-                 Qt5::Widgets
-                 Qt5::Core
-                 MainWindow
-                 SABUtils
-          )
-DeployQt( LocalProdSyncCLI .)
-DeploySystem( LocalProdSyncCLI . )
-
-INSTALL( TARGETS ${PROJECT_NAME} RUNTIME DESTINATION . )
-INSTALL( FILES ${CMAKE_CURRENT_BINARY_DIR}/Debug/${PROJECT_NAME}.pdb DESTINATION . CONFIGURATIONS Debug )
-
-
+add_library(MainLib STATIC
+    ${project_SRCS} 
+    ${project_H}  
+    ${qtproject_SRCS} 
+    ${qtproject_QRC} 
+    ${qtproject_QRC_SRCS} 
+    ${qtproject_UIS_H} 
+    ${qtproject_MOC_SRCS} 
+    ${qtproject_H} 
+    ${qtproject_UIS}
+    ${qtproject_QRC_SOURCES}
+    ${_CMAKE_FILES}
+)
+set_target_properties( MainLib PROPERTIES FOLDER Libs )
