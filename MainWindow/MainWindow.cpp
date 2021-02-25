@@ -171,6 +171,13 @@ void CMainWindow::loadSettings()
     fImpl->localUProdDir->setText( settings.value( "localUProdDir", "\\\\mgc\\home\\prod" ).toString() );
     fImpl->localProdDir->setText( settings.value( "localProdDir", "C:\\localprod" ).toString() );
     auto dataFile = qEnvironmentVariable( "P4_CLIENT_DIR" );
+    if ( dataFile.isEmpty() && !settings.contains( "dataFile" ) )
+    {
+        if ( QMessageBox::question( this, tr( "P4_CLIENT_DIR not set" ), tr( "Environmental variable P4_CLIENT_DIR is not set, would you like to select the directory?" ), QMessageBox::StandardButton::Yes, QMessageBox::StandardButton::No ) == QMessageBox::StandardButton::Yes )
+        {
+            dataFile = QFileDialog::getExistingDirectory( this, tr( "Select P4_CLIENT_DIR directory" ) );
+        }
+    }
     if ( !dataFile.isEmpty() )
         dataFile += "/src/misc/WinLocalProdSyncData.xml";
     fImpl->dataFile->setText( settings.value( "dataFile", dataFile ).toString() );
