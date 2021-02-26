@@ -27,7 +27,7 @@ endif()
 project( MainLib )
 
 include( include.cmake )
-include( ${CMAKE_SOURCE_DIR}/SABUtils/Project.cmake )
+include( ${CMAKE_SOURCE_DIR}/Project.cmake )
 find_package(Qt5 COMPONENTS Widgets Xml XmlPatterns REQUIRED)
 AddQtIncludes()
 

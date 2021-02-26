@@ -35,6 +35,7 @@
 #include <QProcess>
 #include <QDebug>
 #include <QEventLoop>
+#include <QProgressDialog>
 
 #include <optional>
 
@@ -100,7 +101,7 @@ namespace NLoadProdSync
             ii->stop();
     }
 
-    std::pair< int, QString > CDataFile::run( const QString & uProdDir, const QString & server, const QString & localProdDir, const QString & rsyncExec, const QString & bashExec, bool verbose, bool norun, EDrivePrefix drivePrefix, std::function< void( const QString & ) > msgFunc ) const
+    std::pair< int, QString > CDataFile::run( const QString & uProdDir, const QString & server, const QString & localProdDir, const QString & rsyncExec, const QString & bashExec, bool verbose, bool norun, ERSyncType drivePrefix, QProgressDialog * progress, std::function< void( const QString & ) > msgFunc ) const
     {
         QFileInfo fi( localProdDir );
         if ( !fi.exists() )
@@ -131,7 +132,7 @@ namespace NLoadProdSync
         bool aOK;
         QString realRsyncExec;
         QString realBashExec;
-        if ( drivePrefix != NLoadProdSync::EDrivePrefix::eNative )
+        if ( drivePrefix != NLoadProdSync::ERSyncType::eNative )
         {
             if ( !fi.exists() || !fi.isExecutable() )
             {
@@ -160,6 +161,24 @@ namespace NLoadProdSync
             msgFunc( QString( " bash: %1" ).arg( bashExec ) );
         }
 
+        /*
+        Number of files: 17 (reg: 6, dir: 11)
+        Number of created files: 0
+        Number of regular files transferred: 0
+        Total file size: 478,738 bytes
+        Total transferred file size: 0 bytes
+        Literal data: 0 bytes
+        Matched data: 0 bytes
+        File list size: 367
+        File list generation time: 0.002 seconds
+        File list transfer time: 0.000 seconds
+        Total bytes sent: 73
+        Total bytes received: 437
+
+        sent 73 bytes  received 437 bytes  340.00 bytes/sec
+        total size is 478,738  speedup is 938.70
+        */
+
         for ( auto && ii : fDirs )
         {
             auto retVal = ii->run( uProdDir, server, realProdDir, realRsyncExec, bashExec, verbose, norun, msgFunc );
@@ -167,15 +186,18 @@ namespace NLoadProdSync
                 return retVal;
             if ( retVal.first == 23 )
                 msgFunc( "WARNING: Partial transfer occurred please see above to verify results." );
+
+            if ( progress )
+                progress->setValue( progress->value() + 1 );
         }
         return { 0, QString() };
     }
 
-    std::pair< bool, QString > CDataFile::getRealPath( const QString & path, EDrivePrefix drivePrefix ) const
+    std::pair< bool, QString > CDataFile::getRealPath( const QString & path, ERSyncType drivePrefix ) const
     {
         QFileInfo fi( path );
         auto retVal = fi.absoluteFilePath();
-        if ( drivePrefix != EDrivePrefix::eNative )
+        if ( drivePrefix != ERSyncType::eNative )
         {
             if ( retVal.length() < 3 )
             {
@@ -184,9 +206,9 @@ namespace NLoadProdSync
 
             QString drive = retVal[ 0 ];
             retVal = retVal.mid( 3 );
-            if ( drivePrefix == EDrivePrefix::eMSys64 )
+            if ( drivePrefix == ERSyncType::eMSys64 )
                 retVal = "/" + drive + "/" + retVal;
-            else if ( drivePrefix == EDrivePrefix::eCygwin )
+            else if ( drivePrefix == ERSyncType::eCygwin )
                 retVal = "/cygdrive/" + drive + "/" + retVal;
         }
         return { true, retVal };

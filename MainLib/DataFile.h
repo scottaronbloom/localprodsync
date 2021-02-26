@@ -23,6 +23,7 @@
 #ifndef __DATAFILE_H
 #define __DATAFILE_H
 
+#include "Settings.h"
 #include <QString>
 #include <QStringList>
 #include <QDebug>
@@ -33,15 +34,9 @@
 class QProcess;
 class QEventLoop;
 class QWidget;
+class QProgressDialog;
 namespace NLoadProdSync
 {
-    enum class EDrivePrefix
-    {
-        eNative,
-        eCygwin,
-        eMSys64
-    };
-
     struct SDirectory
     {
         SDirectory( const QString & path );
@@ -73,14 +68,15 @@ namespace NLoadProdSync
         void clear() { fDirs.clear(); }
         void addDir( std::shared_ptr< SDirectory > dir ) { fDirs.push_back( dir ); }
         QString fileName() const { return fFileName; }
-        
+
+        int numDirs() const { return static_cast< int >( fDirs.size() ); }
         const std::list< std::shared_ptr< SDirectory > > & dirs() const { return fDirs; }
 
         void stop();
-        std::pair< int, QString > run( const QString & uProdDir, const QString & server, const QString & localProdDir, const QString & rsyncExec, const QString & bashExec, bool verbose, bool norun, EDrivePrefix drivePrefix, std::function< void( const QString & ) > msgFunc ) const;
+        std::pair< int, QString > run( const QString & uProdDir, const QString & server, const QString & localProdDir, const QString & rsyncExec, const QString & bashExec, bool verbose, bool norun, ERSyncType drivePrefix, QProgressDialog * progress, std::function< void( const QString & ) > msgFunc ) const;
 
     private:
-        std::pair<bool, QString> getRealPath( const QString & path, EDrivePrefix drivePrefix ) const;
+        std::pair<bool, QString> getRealPath( const QString & path, ERSyncType drivePrefix ) const;
         bool loadFromJSON( QWidget * parent );
         bool loadFromXML( QWidget * parent );
         QString fFileName;

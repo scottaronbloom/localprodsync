@@ -34,10 +34,13 @@
 #include <QTimer>
 #include <QItemSelection>
 #include <QTextCursor>
+#include <QProgressDialog>
 
 CMainWindow::CMainWindow( QWidget * parent )
     : QDialog( parent ),
-    fImpl( new Ui::CMainWindow )
+    fImpl( new Ui::CMainWindow ),
+    fSettings( new NLoadProdSync::CSettings )
+
 {
     fImpl->setupUi( this );
     fRuntimeTimer.first = new QTimer( this );
@@ -49,6 +52,9 @@ CMainWindow::CMainWindow( QWidget * parent )
     fLocalUProdModel->setReadOnly( true );
     fLocalUProdModel->setResolveSymlinks( true );
     fLocalUProdModel->setFilter( QDir::AllDirs | QDir::NoDotAndDotDot );
+
+    connect( fImpl->openProjectFileBtn, &QToolButton::clicked, this, &CMainWindow::slotOpenProjectFile );
+    connect( fImpl->saveProjectFileBtn, &QToolButton::clicked, this, &CMainWindow::slotSaveProjectFile );
 
     connect( fLocalUProdModel, &QFileSystemModel::directoryLoaded, this, &CMainWindow::slotPathLoaded );
     connect( fImpl->localUProdDirBtn, &QToolButton::clicked, this, &CMainWindow::slotSelectLocalUProdDir );
@@ -66,7 +72,6 @@ CMainWindow::CMainWindow( QWidget * parent )
     connect( fImpl->localProdDirTree, &QTreeWidget::itemDoubleClicked, this, &CMainWindow::slotEditLocalProdDirItem );
 
     connect( fImpl->runBtn, &QPushButton::clicked, this, &CMainWindow::slotRun );
-    connect( fImpl->stopBtn, &QPushButton::clicked, this, &CMainWindow::slotStop );
 
     fImpl->uProdDirTree->setModel( this->fLocalUProdModel );
     fImpl->uProdDirTree->hideColumn( 1 );
@@ -74,53 +79,197 @@ CMainWindow::CMainWindow( QWidget * parent )
 
     fImpl->localProdDirTree->setHeaderLabels( QStringList() << "Directory" << "Exclude" << "Extra" );
     setRunning( false );
+    QSettings settings;
+    setProjects( settings.value( "RecentProjects" ).toStringList() );
+    fImpl->projectFile->setFocus();
+
     QTimer::singleShot( 0, this, &CMainWindow::loadSettings );
+
     popDisconnected( true );
 }
 
 CMainWindow::~CMainWindow()
 {
     saveSettings();
-}
 
-NLoadProdSync::EDrivePrefix CMainWindow::getDrivePrefix() const
-{
-    if ( fImpl->rsyncNative->isChecked() )
-        return NLoadProdSync::EDrivePrefix::eNative;
-    else if ( fImpl->rsyncCygwin->isChecked() )
-        return NLoadProdSync::EDrivePrefix::eCygwin;
-    else if ( fImpl->rsyncMSys64->isChecked() )
-        return NLoadProdSync::EDrivePrefix::eMSys64;
-    return NLoadProdSync::EDrivePrefix::eNative;
-}
-
-NLoadProdSync::EDrivePrefix CMainWindow::autoGetDrivePrefix() const
-{
-    auto path = fImpl->rsyncExec->text();
-    if ( path.contains( "cygwin", Qt::CaseInsensitive ) )
-        return NLoadProdSync::EDrivePrefix::eCygwin;
-    if ( path.contains( "msys64", Qt::CaseInsensitive ) )
-        return NLoadProdSync::EDrivePrefix::eMSys64;
-
-    return NLoadProdSync::EDrivePrefix::eNative;
+    QSettings settings;
+    settings.setValue( "RecentProjects", getProjects() );
 }
 
 void CMainWindow::saveSettings()
 {
     slotSaveDataFile();
 
-    QSettings settings;
+    fSettings->setRemoteUProdDir( fImpl->remoteUProdDir->text() );
+    fSettings->setLocalUProdDir( fImpl->localUProdDir->text() );
+    fSettings->setLocalProdDir( fImpl->localProdDir->text() );
+    fSettings->setDataFile( fImpl->dataFile->text() );
+    fSettings->setRsyncServer( fImpl->rsyncServer->text() );
+    fSettings->setRsyncExec( fImpl->rsyncExec->text() );
+    fSettings->setBashExec( fImpl->bashExec->text() );
+    fSettings->setRsyncType( getDrivePrefix() );
+    fSettings->setVerbose( fImpl->verbose->isChecked() );
+    fSettings->setNoRun( fImpl->norun->isChecked() );
+}
 
-    settings.setValue( "remoteUProdDir", fImpl->remoteUProdDir->text() );
-    settings.setValue( "localUProdDir", fImpl->localUProdDir->text() );
-    settings.setValue( "localProdDir", fImpl->localProdDir->text() );
-    settings.setValue( "dataFile", fImpl->dataFile->text() );
-    settings.setValue( "rsyncServer", fImpl->rsyncServer->text() );
-    settings.setValue( "rsyncExec", fImpl->rsyncExec->text() );
-    settings.setValue( "bashExec", fImpl->bashExec->text() );
-    settings.setValue( "rsyncDrivePrefix", (int)getDrivePrefix() );
-    settings.setValue( "verbose", fImpl->verbose->isChecked() );
-    settings.setValue( "norun", fImpl->norun->isChecked() );
+void CMainWindow::loadSettings()
+{
+    pushDisconnected();
+
+    fImpl->remoteUProdDir->setText( fSettings->getRemoteUProdDir( "/u/prod" ) );
+    fImpl->localUProdDir->setText( fSettings->getLocalUProdDir( "\\\\mgc\\home\\prod" ) );
+    fImpl->localProdDir->setText( fSettings->getLocalProdDir( "C:\\localprod" ) );
+    auto dataFile = qEnvironmentVariable( "P4_CLIENT_DIR" );
+    bool isSet = fSettings->isDataFileSet();
+    auto tmp = fSettings->fileName();
+    if ( dataFile.isEmpty() && !fSettings->isDataFileSet() )
+    {
+        if ( QMessageBox::question( this, tr( "P4_CLIENT_DIR not set" ), tr( "Environmental variable P4_CLIENT_DIR is not set, would you like to select the directory?" ), QMessageBox::StandardButton::Yes, QMessageBox::StandardButton::No ) == QMessageBox::StandardButton::Yes )
+        {
+            dataFile = QFileDialog::getExistingDirectory( this, tr( "Select P4_CLIENT_DIR directory" ) );
+        }
+    }
+    if ( !dataFile.isEmpty() )
+        dataFile += "/src/misc/WinLocalProdSyncData.xml";
+    fImpl->dataFile->setText( fSettings->getDataFile( dataFile ) );
+    fImpl->rsyncServer->setText( fSettings->getRsyncServer( "local-rsync-vm1.wv.mentorg.com" ) );
+    fImpl->rsyncExec->setText( fSettings->getRsyncExec( "C:/msys64/usr/bin/rsync.exe" ) );
+    fImpl->bashExec->setText( fSettings->getBashExec( "C:/msys64/usr/bin/bash.exe" ) );
+    fImpl->verbose->setChecked( fSettings->getVerbose( true ) );
+    fImpl->norun->setChecked( fSettings->getNoRun( false ) );
+    auto drivePrefix = fSettings->getRsyncType( autoGetDrivePrefix() );
+    if ( drivePrefix == NLoadProdSync::ERSyncType::eNative )
+        fImpl->rsyncNative->setChecked( true );
+    else if ( drivePrefix == NLoadProdSync::ERSyncType::eCygwin )
+        fImpl->rsyncCygwin->setChecked( true );
+    else if ( drivePrefix == NLoadProdSync::ERSyncType::eMSys64 )
+        fImpl->rsyncMSys64->setChecked( true );
+
+    popDisconnected();
+
+    QTimer::singleShot( 0, this, &CMainWindow::setLocalUProdDir );
+    QTimer::singleShot( 0, this, &CMainWindow::loadLocalProdDir );
+}
+
+void CMainWindow::setProjects( QStringList projects )
+{
+    for ( int ii = 0; ii < projects.count(); ++ii )
+    {
+        if ( projects[ ii ].isEmpty() || !QFileInfo( projects[ ii ] ).exists() )
+        {
+            projects.removeAt( ii );
+            ii--;
+        }
+    }
+
+    pushDisconnected();
+    fImpl->projectFile->clear();
+    fImpl->projectFile->addItems( QStringList() << QString() << projects );
+    popDisconnected();
+}
+
+void CMainWindow::slotOpenProjectFile()
+{
+    auto currPath = fImpl->projectFile->currentText();
+    if ( currPath.isEmpty() )
+        currPath = fSettings->fileName();
+    if ( currPath.isEmpty() )
+        currPath = QString();
+    auto projFile = QFileDialog::getOpenFileName( this, tr( "Select Project File to open" ), currPath, "Project Files *.ini;;All Files *.*" );
+    setProjectFile( projFile, true );
+}
+
+void CMainWindow::slotSaveProjectFile()
+{
+    auto currPath = fImpl->projectFile->currentText();
+    if ( currPath.isEmpty() )
+        currPath = fSettings->fileName();
+    if ( currPath.isEmpty() )
+        currPath = QString();
+    auto projFile = QFileDialog::getSaveFileName( this, tr( "Select Project File to save" ), currPath, "Project Files *.ini;;All Files *.*" );
+    setProjectFile( projFile, false );
+}
+
+void CMainWindow::slotCurrentProjectChanged( const QString & projFile )
+{
+    setProjectFile( projFile, true );
+}
+
+void CMainWindow::setProjectFile( const QString & projFile, bool load )
+{
+    if ( projFile.isEmpty() )
+        return;
+    setCurrentProject( projFile );
+
+    if ( load )
+    {
+        if ( !fSettings->loadSettings( projFile ) )
+        {
+            QMessageBox::critical( this, tr( "Project File not Opened" ), QString( "Error: '%1' is not a valid project file" ).arg( projFile ) );
+            return;
+        }
+    }
+    else
+        fSettings->setFileName( projFile );
+    setWindowTitle( tr( "Local Prod Sync - %1" ).arg( projFile ) );
+    if ( load )
+    {
+        loadSettings();
+        slotChanged();
+    }
+    else
+    {
+        saveSettings();
+        fSettings->saveSettings();
+    }
+}
+
+void CMainWindow::setCurrentProject( const QString & projFile )
+{
+    pushDisconnected();
+    auto projects = getProjects();
+    for ( int ii = 0; ii < projects.count(); ++ii )
+    {
+        if ( projects[ ii ] == projFile )
+        {
+            projects.removeAt( ii );
+            ii--;
+        }
+    }
+    projects.insert( 0, projFile );
+    setProjects( projects );
+    fImpl->projectFile->setCurrentText( projFile );
+    popDisconnected();
+}
+
+QStringList CMainWindow::getProjects() const
+{
+    QStringList projects;
+    for ( int ii = 1; ii < fImpl->projectFile->count(); ++ii )
+        projects << fImpl->projectFile->itemText( ii );
+    return projects;
+}
+
+NLoadProdSync::ERSyncType CMainWindow::getDrivePrefix() const
+{
+    if ( fImpl->rsyncNative->isChecked() )
+        return NLoadProdSync::ERSyncType::eNative;
+    else if ( fImpl->rsyncCygwin->isChecked() )
+        return NLoadProdSync::ERSyncType::eCygwin;
+    else if ( fImpl->rsyncMSys64->isChecked() )
+        return NLoadProdSync::ERSyncType::eMSys64;
+    return NLoadProdSync::ERSyncType::eNative;
+}
+
+NLoadProdSync::ERSyncType CMainWindow::autoGetDrivePrefix() const
+{
+    auto path = fImpl->rsyncExec->text();
+    if ( path.contains( "cygwin", Qt::CaseInsensitive ) )
+        return NLoadProdSync::ERSyncType::eCygwin;
+    if ( path.contains( "msys64", Qt::CaseInsensitive ) )
+        return NLoadProdSync::ERSyncType::eMSys64;
+
+    return NLoadProdSync::ERSyncType::eNative;
 }
 
 void CMainWindow::slotSaveDataFile()
@@ -162,50 +311,13 @@ void CMainWindow::slotSaveDataFile()
     }
 }
 
-void CMainWindow::loadSettings()
-{
-    pushDisconnected();
-
-    QSettings settings;
-    fImpl->remoteUProdDir->setText( settings.value( "remoteUProdDir", "/u/prod" ).toString() );
-    fImpl->localUProdDir->setText( settings.value( "localUProdDir", "\\\\mgc\\home\\prod" ).toString() );
-    fImpl->localProdDir->setText( settings.value( "localProdDir", "C:\\localprod" ).toString() );
-    auto dataFile = qEnvironmentVariable( "P4_CLIENT_DIR" );
-    if ( dataFile.isEmpty() && !settings.contains( "dataFile" ) )
-    {
-        if ( QMessageBox::question( this, tr( "P4_CLIENT_DIR not set" ), tr( "Environmental variable P4_CLIENT_DIR is not set, would you like to select the directory?" ), QMessageBox::StandardButton::Yes, QMessageBox::StandardButton::No ) == QMessageBox::StandardButton::Yes )
-        {
-            dataFile = QFileDialog::getExistingDirectory( this, tr( "Select P4_CLIENT_DIR directory" ) );
-        }
-    }
-    if ( !dataFile.isEmpty() )
-        dataFile += "/src/misc/WinLocalProdSyncData.xml";
-    fImpl->dataFile->setText( settings.value( "dataFile", dataFile ).toString() );
-    fImpl->rsyncServer->setText( settings.value( "rsyncServer", "local-rsync-vm1.wv.mentorg.com" ).toString() );
-    fImpl->rsyncExec->setText( settings.value( "rsyncExec", "C:/msys64/usr/bin/rsync.exe" ).toString() );
-    fImpl->bashExec->setText( settings.value( "bashExec", "C:/msys64/usr/bin/bash.exe" ).toString() );
-    fImpl->verbose->setChecked( settings.value( "verbose", true ).toBool() );
-    fImpl->norun->setChecked( settings.value( "norun", false ).toBool() );
-    auto drivePrefix = static_cast<NLoadProdSync::EDrivePrefix>( settings.value( "rsyncDrivePrefix", (int)autoGetDrivePrefix() ).toInt() );
-    if ( drivePrefix == NLoadProdSync::EDrivePrefix::eNative )
-        fImpl->rsyncNative->setChecked( true );
-    else if ( drivePrefix == NLoadProdSync::EDrivePrefix::eCygwin )
-        fImpl->rsyncCygwin->setChecked( true );
-    else if ( drivePrefix == NLoadProdSync::EDrivePrefix::eMSys64 )
-        fImpl->rsyncMSys64->setChecked( true );
-
-    popDisconnected();
-
-    QTimer::singleShot( 0, this, &CMainWindow::setLocalUProdDir );
-    QTimer::singleShot( 0, this, &CMainWindow::loadLocalProdDir );
-}
-
 void CMainWindow::popDisconnected( bool force )
 {
     if ( !force && fDisconnected )
         fDisconnected--;
     if ( force || fDisconnected == 0 )
     {
+        connect( fImpl->projectFile, &QComboBox::currentTextChanged, this, &CMainWindow::slotCurrentProjectChanged );
         connect( fImpl->localUProdDir, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
         connect( fImpl->localProdDir, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
         connect( fImpl->dataFile, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
@@ -227,6 +339,7 @@ void CMainWindow::pushDisconnected()
 {
     if ( fDisconnected == 0 )
     {
+        disconnect( fImpl->projectFile, &QComboBox::currentTextChanged, this, &CMainWindow::slotCurrentProjectChanged );
         disconnect( fImpl->localUProdDir, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
         disconnect( fImpl->localProdDir, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
         disconnect( fImpl->dataFile, &QLineEdit::textChanged, this, &CMainWindow::slotChanged );
@@ -700,7 +813,6 @@ void CMainWindow::loadItem( int pos, const QString & src, const QStringList & ex
 
 void CMainWindow::setRunning( bool running )
 {
-    fImpl->stopBtn->setEnabled( running );
     fImpl->runBtn->setEnabled( !running );
     fImpl->runtimeLabel->setVisible( running );
 }
@@ -723,6 +835,22 @@ void CMainWindow::slotUpdateRuntimeLabel()
 void CMainWindow::slotRun()
 {
     saveSettings();
+    if ( !fDataFile )
+        return;
+
+    auto progress = new QProgressDialog( tr( "Synchronizing the prod Directory" ), tr( "Cancel" ), 0, 0, this );
+    auto pb = new QPushButton( tr( "Cancel" ) );
+    progress->setCancelButton( pb );
+    connect( pb, &QPushButton::clicked, this, &CMainWindow::slotStop );
+    progress->setWindowFlags( progress->windowFlags() & ~Qt::WindowCloseButtonHint );
+    progress->setAutoReset( false );
+    progress->setAutoClose( true );
+    progress->setWindowModality( Qt::WindowModal );
+    progress->setMinimumDuration( 1 );
+    progress->setRange( 0, fDataFile->numDirs() );
+    progress->setValue( 0 );
+    qApp->processEvents();
+
     setRunning( true );
     fImpl->runtimeLabel->setText( "Runtime 00:00:00" );
     fRuntimeTimer.second = std::chrono::system_clock::now();
@@ -731,26 +859,9 @@ void CMainWindow::slotRun()
     if ( fDataFile )
     {
         fImpl->log->clear();
-        auto retVal = fDataFile->run( fImpl->remoteUProdDir->text(), fImpl->rsyncServer->text(), fImpl->localProdDir->text(), fImpl->rsyncExec->text(), fImpl->bashExec->text(), fImpl->verbose->isChecked(), fImpl->norun->isChecked(), getDrivePrefix(),
+        auto retVal = fDataFile->run( fImpl->remoteUProdDir->text(), fImpl->rsyncServer->text(), fImpl->localProdDir->text(), fImpl->rsyncExec->text(), fImpl->bashExec->text(), fImpl->verbose->isChecked(), fImpl->norun->isChecked(), getDrivePrefix(), progress,
                         [this]( const QString & msg )
                         {
-/*
-Number of files: 17 (reg: 6, dir: 11)
-Number of created files: 0
-Number of regular files transferred: 0
-Total file size: 478,738 bytes
-Total transferred file size: 0 bytes
-Literal data: 0 bytes
-Matched data: 0 bytes
-File list size: 367
-File list generation time: 0.002 seconds
-File list transfer time: 0.000 seconds
-Total bytes sent: 73
-Total bytes received: 437
-
-sent 73 bytes  received 437 bytes  340.00 bytes/sec
-total size is 478,738  speedup is 938.70
-*/
                             appendToLog( msg );
                         } );
         if ( !retVal.first )

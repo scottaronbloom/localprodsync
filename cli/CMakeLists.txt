@@ -23,7 +23,7 @@
 project(LocalProdSyncCLI) 
 
 include( include.cmake )
-include( ${CMAKE_SOURCE_DIR}/SABUtils/Project.cmake )
+include( ${CMAKE_SOURCE_DIR}/Project.cmake )
 
 add_executable( LocalProdSyncCLI
                  ${project_SRCS} 
@@ -46,7 +46,6 @@ target_link_libraries( LocalProdSyncCLI
                  Qt5::Widgets
                  Qt5::Core
                  MainWindow
-                 SABUtils
           )
 DeployQt( LocalProdSyncCLI .)
 DeploySystem( LocalProdSyncCLI . )

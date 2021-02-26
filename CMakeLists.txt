@@ -27,7 +27,7 @@ endif()
 
 project(LocalProdSync) 
 
-SET(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/SABUtils/Modules ${CMAKE_MODULE_PATH})
+SET(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/Modules ${CMAKE_MODULE_PATH})
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
@@ -39,8 +39,6 @@ set_property( GLOBAL PROPERTY USE_FOLDERS ON )
 
 SET( CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/Install )
 
-add_custom_target( SABTests_SABUtils )
-add_subdirectory( SABUtils )
 add_subdirectory( MainWindow )
 add_subdirectory( MainLib )
 add_subdirectory( gui )

@@ -22,6 +22,7 @@
 
 set(qtproject_SRCS
     DataFile.cpp
+    Settings.cpp
 )
 
 set(qtproject_H
@@ -29,6 +30,7 @@ set(qtproject_H
 
 set(project_H
     DataFile.h
+    Settings.h
 )
 
 set(qtproject_UIS

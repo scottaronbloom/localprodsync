@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>938</width>
-    <height>679</height>
+    <width>797</width>
+    <height>786</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -20,6 +20,46 @@
    <string>Local Prod Sync Tool</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_3">
+   <item row="1" column="0" colspan="3">
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>699</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="1" column="3" colspan="2">
+    <widget class="QLabel" name="runtimeLabel">
+     <property name="text">
+      <string>Runtime: 00:00:00</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="5">
+    <widget class="QPushButton" name="runBtn">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="whatsThis">
+      <string>Click this button to run the sync</string>
+     </property>
+     <property name="text">
+      <string>Run</string>
+     </property>
+     <property name="icon">
+      <iconset resource="MainWindow.qrc">
+       <normaloff>:/resources/generate.png</normaloff>:/resources/generate.png</iconset>
+     </property>
+    </widget>
+   </item>
    <item row="0" column="0" colspan="6">
     <widget class="QSplitter" name="splitter_2">
      <property name="orientation">
@@ -27,7 +67,324 @@
      </property>
      <widget class="QWidget" name="layoutWidget_1">
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="1" column="0" colspan="2">
+       <item row="2" column="0" colspan="5">
+        <widget class="QGroupBox" name="groupBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="title">
+          <string>Setup Information</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_5">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_12">
+            <property name="text">
+             <string>Windows Native Prod Directory:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="label_13">
+            <property name="text">
+             <string>Remote rsync Server:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="6">
+           <widget class="QToolButton" name="localProdDirBtn">
+            <property name="whatsThis">
+             <string>Click here to set the local prod directory</string>
+            </property>
+            <property name="text">
+             <string>...</string>
+            </property>
+            <property name="icon">
+             <iconset resource="MainWindow.qrc">
+              <normaloff>:/resources/open.png</normaloff>:/resources/open.png</iconset>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="5">
+           <widget class="QToolButton" name="dataFileBtn">
+            <property name="whatsThis">
+             <string>Click here to save the settings file</string>
+            </property>
+            <property name="text">
+             <string>...</string>
+            </property>
+            <property name="icon">
+             <iconset resource="MainWindow.qrc">
+              <normaloff>:/resources/open.png</normaloff>:/resources/open.png</iconset>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0" colspan="7">
+           <layout class="QHBoxLayout" name="horizontalLayout">
+            <item>
+             <widget class="QCheckBox" name="verbose">
+              <property name="whatsThis">
+               <string>When this box is checked, more information is displayed while running</string>
+              </property>
+              <property name="text">
+               <string>Verbose</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="norun">
+              <property name="whatsThis">
+               <string>When this box is checked, rsync is not actually run, but the commands are echoed out</string>
+              </property>
+              <property name="text">
+               <string>No run (echo only rsync commands)</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_2">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_5">
+            <property name="text">
+             <string>Data File:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1" colspan="4">
+           <widget class="QLineEdit" name="dataFile">
+            <property name="whatsThis">
+             <string>This field contains the data file to for the client you are wanting to build.  Typically this is set to $P4_CLIENT_DIR/src/misc/WinLocalProdSyncData.xml</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1" colspan="5">
+           <widget class="QLineEdit" name="rsyncServer">
+            <property name="whatsThis">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This field is the rsync server to use.&lt;/p&gt;
+For
+&lt;ul&gt;
+&lt;li&gt;wilsonville use local-rsync-vm1.wv.mentorg.com&lt;/li&gt;&lt;/ul&gt;
+&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_14">
+            <property name="whatsThis">
+             <string>This field contains the prod directory on your local machine.  Typically this is C:localprod</string>
+            </property>
+            <property name="text">
+             <string>Localprod Directory:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="6">
+           <widget class="QToolButton" name="saveDataFileBtn">
+            <property name="whatsThis">
+             <string>Click here to save the settings file.  (NOTE: you may need to p4 edit externally)</string>
+            </property>
+            <property name="text">
+             <string>...</string>
+            </property>
+            <property name="icon">
+             <iconset resource="MainWindow.qrc">
+              <normaloff>:/resources/download.png</normaloff>:/resources/download.png</iconset>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1" colspan="5">
+           <widget class="QLineEdit" name="localProdDir">
+            <property name="whatsThis">
+             <string>This field holds the local directory to sync the prod directory two.  C:\localprod is recommended</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="label_2">
+            <property name="text">
+             <string>Remote /u/prod Directory:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="6">
+           <widget class="QToolButton" name="localUProdDirBtn">
+            <property name="whatsThis">
+             <string>Click here to select the native path to the /u/prod directory</string>
+            </property>
+            <property name="text">
+             <string>...</string>
+            </property>
+            <property name="icon">
+             <iconset resource="MainWindow.qrc">
+              <normaloff>:/resources/open.png</normaloff>:/resources/open.png</iconset>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1" colspan="5">
+           <widget class="QLineEdit" name="localUProdDir">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>1</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="whatsThis">
+             <string>This field contains the Native Windows (UNC) path for the /u/prod directory.  For wilsonville, this is typically \\mgc\home\prod</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1" colspan="5">
+           <widget class="QLineEdit" name="remoteUProdDir">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>1</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="whatsThis">
+             <string>This field contains the path for /u/prod on the rsync server.</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0" colspan="7">
+           <widget class="QGroupBox" name="groupBox_2">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="title">
+             <string>RSync Executable and Settings</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_4">
+             <item row="4" column="0" colspan="4">
+              <widget class="QRadioButton" name="rsyncCygwin">
+               <property name="whatsThis">
+                <string>If you are using a cygwin based rsync executable, select this button</string>
+               </property>
+               <property name="text">
+                <string>Rsync is Cygwin version</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="3">
+              <widget class="QToolButton" name="rsyncExecBtn">
+               <property name="whatsThis">
+                <string>Click here to select the rsync executable</string>
+               </property>
+               <property name="text">
+                <string>...</string>
+               </property>
+               <property name="icon">
+                <iconset resource="MainWindow.qrc">
+                 <normaloff>:/resources/open.png</normaloff>:/resources/open.png</iconset>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>Rsync Executable:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="0" colspan="3">
+              <widget class="QRadioButton" name="rsyncNative">
+               <property name="whatsThis">
+                <string>If you are using a native windows rsync system, select this button</string>
+               </property>
+               <property name="text">
+                <string>Rsync is native windows application</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1" colspan="2">
+              <widget class="QLineEdit" name="bashExec">
+               <property name="whatsThis">
+                <string>This field contains the bash executable.  For the default msys64 setup, C:/msys64/usr/bin/bash.exe should be used.  This is only necessary for using the ssh security tokens</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1" colspan="2">
+              <widget class="QLineEdit" name="rsyncExec">
+               <property name="whatsThis">
+                <string>This field contains the rsync executable.  For the default msys64 setup, C:/msys64/usr/bin/rsync.exe should be used</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_3">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>Bash Shell Executable:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="3">
+              <widget class="QToolButton" name="bashExecBtn">
+               <property name="whatsThis">
+                <string>Click here to select the bash shell executable</string>
+               </property>
+               <property name="text">
+                <string>...</string>
+               </property>
+               <property name="icon">
+                <iconset resource="MainWindow.qrc">
+                 <normaloff>:/resources/open.png</normaloff>:/resources/open.png</iconset>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0" colspan="3">
+              <widget class="QRadioButton" name="rsyncMSys64">
+               <property name="whatsThis">
+                <string>If you are using a msys64 rsync executable (the default) select his button</string>
+               </property>
+               <property name="text">
+                <string>Rsync is MSys64 version</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>Settings File:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0" colspan="5">
         <widget class="QSplitter" name="splitter">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
@@ -43,6 +400,9 @@
            </item>
            <item>
             <widget class="QTreeView" name="uProdDirTree">
+             <property name="whatsThis">
+              <string>Based on the MGC Prod Directory above, show the directory tree of the /u/prod directory system</string>
+             </property>
              <property name="editTriggers">
               <set>QAbstractItemView::NoEditTriggers</set>
              </property>
@@ -67,7 +427,7 @@
            <item row="0" column="1">
             <widget class="QLabel" name="localLabel">
              <property name="text">
-              <string>Local:</string>
+              <string>Setting:</string>
              </property>
             </widget>
            </item>
@@ -86,6 +446,9 @@
            </item>
            <item row="1" column="0">
             <widget class="QToolButton" name="addItemBtn">
+             <property name="whatsThis">
+              <string>Add the selected item from the remote /u/prod directory to the list of directories that will get synced</string>
+             </property>
              <property name="text">
               <string/>
              </property>
@@ -97,6 +460,9 @@
            </item>
            <item row="3" column="0">
             <widget class="QToolButton" name="editItemBtn">
+             <property name="whatsThis">
+              <string>Edit the directory selected in the settings on the right</string>
+             </property>
              <property name="text">
               <string/>
              </property>
@@ -108,6 +474,9 @@
            </item>
            <item row="1" column="1" rowspan="5" colspan="2">
             <widget class="QTreeWidget" name="localProdDirTree">
+             <property name="whatsThis">
+              <string>This tree shows the list of all directories set to be synced including exlcuded and extra rsync options</string>
+             </property>
              <property name="alternatingRowColors">
               <bool>true</bool>
              </property>
@@ -129,6 +498,9 @@
            </item>
            <item row="4" column="0">
             <widget class="QToolButton" name="delItemBtn">
+             <property name="whatsThis">
+              <string>Delete the directory from the settings on the right</string>
+             </property>
              <property name="text">
               <string/>
              </property>
@@ -140,6 +512,9 @@
            </item>
            <item row="2" column="0">
             <widget class="QToolButton" name="addAsExcludeBtn">
+             <property name="whatsThis">
+              <string>Add the selected item from the remote /u/prod directory as an excluded directory for the currently selected directory on the right</string>
+             </property>
              <property name="text">
               <string>...</string>
              </property>
@@ -153,221 +528,63 @@
          </widget>
         </widget>
        </item>
-       <item row="0" column="0" colspan="2">
-        <widget class="QGroupBox" name="groupBox">
+       <item row="1" column="4">
+        <spacer name="horizontalSpacer_3">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="1" column="2">
+        <widget class="QPushButton" name="openProjectFileBtn">
+         <property name="text">
+          <string>Load</string>
+         </property>
+         <property name="icon">
+          <iconset resource="MainWindow.qrc">
+           <normaloff>:/resources/open.png</normaloff>:/resources/open.png</iconset>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QComboBox" name="projectFile">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
-         <property name="title">
-          <string>Setup Information</string>
+        </widget>
+       </item>
+       <item row="1" column="3">
+        <widget class="QPushButton" name="saveProjectFileBtn">
+         <property name="text">
+          <string>Save</string>
          </property>
-         <layout class="QGridLayout" name="gridLayout_5">
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_13">
-            <property name="text">
-             <string>RSync Server:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="2">
-           <widget class="QToolButton" name="localUProdDirBtn">
-            <property name="text">
-             <string>...</string>
-            </property>
-            <property name="icon">
-             <iconset resource="MainWindow.qrc">
-              <normaloff>:/resources/open.png</normaloff>:/resources/open.png</iconset>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_14">
-            <property name="text">
-             <string>LocalProd Directory:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_5">
-            <property name="text">
-             <string>Data File:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_12">
-            <property name="text">
-             <string>MGC Prod Directory:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="6">
-           <widget class="QToolButton" name="localProdDirBtn">
-            <property name="text">
-             <string>...</string>
-            </property>
-            <property name="icon">
-             <iconset resource="MainWindow.qrc">
-              <normaloff>:/resources/open.png</normaloff>:/resources/open.png</iconset>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="6">
-           <widget class="QToolButton" name="saveDataFileBtn">
-            <property name="text">
-             <string>...</string>
-            </property>
-            <property name="icon">
-             <iconset resource="MainWindow.qrc">
-              <normaloff>:/resources/download.png</normaloff>:/resources/download.png</iconset>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="3">
-           <widget class="QLabel" name="label_2">
-            <property name="text">
-             <string>Remote /u/prod Directory:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <widget class="QLineEdit" name="localUProdDir"/>
-          </item>
-          <item row="2" column="5">
-           <widget class="QToolButton" name="dataFileBtn">
-            <property name="text">
-             <string>...</string>
-            </property>
-            <property name="icon">
-             <iconset resource="MainWindow.qrc">
-              <normaloff>:/resources/open.png</normaloff>:/resources/open.png</iconset>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="1" colspan="4">
-           <widget class="QLineEdit" name="dataFile"/>
-          </item>
-          <item row="0" column="4" colspan="2">
-           <widget class="QLineEdit" name="remoteUProdDir"/>
-          </item>
-          <item row="3" column="1" colspan="5">
-           <widget class="QLineEdit" name="rsyncServer"/>
-          </item>
-          <item row="1" column="1" colspan="5">
-           <widget class="QLineEdit" name="localProdDir"/>
-          </item>
-          <item row="4" column="0" colspan="7">
-           <widget class="QGroupBox" name="groupBox_2">
-            <property name="title">
-             <string>RSync Executable and Settings</string>
-            </property>
-            <layout class="QGridLayout" name="gridLayout_4">
-             <item row="0" column="3">
-              <widget class="QToolButton" name="rsyncExecBtn">
-               <property name="text">
-                <string>...</string>
-               </property>
-               <property name="icon">
-                <iconset resource="MainWindow.qrc">
-                 <normaloff>:/resources/open.png</normaloff>:/resources/open.png</iconset>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="0" colspan="3">
-              <widget class="QRadioButton" name="rsyncCygwin">
-               <property name="text">
-                <string>RSync is Cygwin version</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="0" colspan="3">
-              <widget class="QRadioButton" name="rsyncMSys64">
-               <property name="text">
-                <string>RSync is MSys64 version</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="3">
-              <widget class="QToolButton" name="bashExecBtn">
-               <property name="text">
-                <string>...</string>
-               </property>
-               <property name="icon">
-                <iconset resource="MainWindow.qrc">
-                 <normaloff>:/resources/open.png</normaloff>:/resources/open.png</iconset>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="0" colspan="3">
-              <widget class="QRadioButton" name="rsyncNative">
-               <property name="text">
-                <string>Rsync is native windows application</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1" colspan="2">
-              <widget class="QLineEdit" name="bashExec"/>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="label_3">
-               <property name="text">
-                <string>Bash Shell Executable:</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="0">
-              <widget class="QLabel" name="label">
-               <property name="text">
-                <string>Rsync Executable:</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="1" colspan="2">
-              <widget class="QLineEdit" name="rsyncExec"/>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item row="5" column="0" colspan="7">
-           <layout class="QHBoxLayout" name="horizontalLayout">
-            <item>
-             <widget class="QCheckBox" name="verbose">
-              <property name="text">
-               <string>Verbose</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QCheckBox" name="norun">
-              <property name="text">
-               <string>No run (echo only rsync commands)</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <spacer name="horizontalSpacer_2">
-              <property name="orientation">
-               <enum>Qt::Horizontal</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>40</width>
-                <height>20</height>
-               </size>
-              </property>
-             </spacer>
-            </item>
-           </layout>
-          </item>
-         </layout>
+         <property name="icon">
+          <iconset resource="MainWindow.qrc">
+           <normaloff>:/resources/download.png</normaloff>:/resources/download.png</iconset>
+         </property>
         </widget>
        </item>
       </layout>
      </widget>
      <widget class="QPlainTextEdit" name="log">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>1</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="whatsThis">
+       <string>The log of the run</string>
+      </property>
       <property name="lineWrapMode">
        <enum>QPlainTextEdit::NoWrap</enum>
       </property>
@@ -377,74 +594,27 @@
      </widget>
     </widget>
    </item>
-   <item row="1" column="5">
-    <widget class="QPushButton" name="stopBtn">
-     <property name="text">
-      <string>Stop</string>
-     </property>
-     <property name="icon">
-      <iconset resource="MainWindow.qrc">
-       <normaloff>:/resources/stop.png</normaloff>:/resources/stop.png</iconset>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="4">
-    <widget class="QPushButton" name="runBtn">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="text">
-      <string>Run</string>
-     </property>
-     <property name="icon">
-      <iconset resource="MainWindow.qrc">
-       <normaloff>:/resources/generate.png</normaloff>:/resources/generate.png</iconset>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="3">
-    <widget class="QLabel" name="runtimeLabel">
-     <property name="text">
-      <string>Runtime: 00:00:00</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="0" colspan="3">
-    <spacer name="horizontalSpacer">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>699</width>
-       <height>20</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
   </layout>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <tabstops>
+  <tabstop>projectFile</tabstop>
   <tabstop>localUProdDir</tabstop>
   <tabstop>localUProdDirBtn</tabstop>
-  <tabstop>remoteUProdDir</tabstop>
   <tabstop>localProdDir</tabstop>
   <tabstop>localProdDirBtn</tabstop>
   <tabstop>dataFile</tabstop>
   <tabstop>dataFileBtn</tabstop>
   <tabstop>saveDataFileBtn</tabstop>
   <tabstop>rsyncServer</tabstop>
+  <tabstop>remoteUProdDir</tabstop>
   <tabstop>rsyncExec</tabstop>
   <tabstop>rsyncExecBtn</tabstop>
   <tabstop>bashExec</tabstop>
   <tabstop>bashExecBtn</tabstop>
-  <tabstop>rsyncNative</tabstop>
-  <tabstop>rsyncCygwin</tabstop>
   <tabstop>rsyncMSys64</tabstop>
+  <tabstop>rsyncCygwin</tabstop>
+  <tabstop>rsyncNative</tabstop>
   <tabstop>verbose</tabstop>
   <tabstop>norun</tabstop>
   <tabstop>uProdDirTree</tabstop>
@@ -455,10 +625,10 @@
   <tabstop>localProdDirTree</tabstop>
   <tabstop>log</tabstop>
   <tabstop>runBtn</tabstop>
-  <tabstop>stopBtn</tabstop>
  </tabstops>
  <resources>
   <include location="MainWindow.qrc"/>
+  <include location="../../vsprojmaker/MainWindow/MainWindow.qrc"/>
  </resources>
  <connections/>
 </ui>

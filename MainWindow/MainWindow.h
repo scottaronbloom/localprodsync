@@ -36,8 +36,9 @@ class QItemSelection;
 namespace Ui {class CMainWindow;};
 namespace NLoadProdSync
 {
+    class CSettings;
     class CDataFile;
-    enum class EDrivePrefix;
+    enum class ERSyncType;
 }
 
 class CMainWindow : public QDialog
@@ -47,8 +48,8 @@ public:
     CMainWindow(QWidget *parent = 0);
     ~CMainWindow();
 
-    NLoadProdSync::EDrivePrefix getDrivePrefix() const; // based on radio button settings defaults to native
-    NLoadProdSync::EDrivePrefix autoGetDrivePrefix() const; // based on the rsync executable path default to native
+    NLoadProdSync::ERSyncType getDrivePrefix() const; // based on radio button settings defaults to native
+    NLoadProdSync::ERSyncType autoGetDrivePrefix() const; // based on the rsync executable path default to native
 
 public Q_SLOTS:
     void slotChanged();
@@ -69,7 +70,13 @@ public Q_SLOTS:
     void slotRun();
     void slotStop();
     void slotUpdateRuntimeLabel();
+    void slotOpenProjectFile();
+    void slotSaveProjectFile();
+    void setProjectFile( const QString & projFile, bool load );
+    void slotCurrentProjectChanged( const QString & projFile );
 private:
+    QStringList getProjects() const;
+    void setCurrentProject( const QString & projFile );
     bool localUProdDirChanged() const;
     bool localProdDirChanged() const;
     void setModified( bool modified );
@@ -79,6 +86,7 @@ private:
     QTreeWidgetItem * getCurrLocalItem( bool andSelect ) const;
     void selectLocalItem( QTreeWidgetItem * retVal ) const;
     QTreeWidgetItem * getTopItem( QTreeWidgetItem * item ) const;
+    void setProjects( QStringList projects );
 
     QList< QTreeWidgetItem * > getItems( int columnNum, const QStringList & items );
 
@@ -103,9 +111,10 @@ private:
     int fDisconnected{ 0 };
     bool fUProdLoading{ false };
     bool fModified{ false };
+    std::unique_ptr< Ui::CMainWindow > fImpl;
+    std::unique_ptr< NLoadProdSync::CSettings > fSettings;
     std::shared_ptr< NLoadProdSync::CDataFile > fDataFile;
     std::pair< QTimer *, std::chrono::system_clock::time_point > fRuntimeTimer;
-    std::unique_ptr< Ui::CMainWindow > fImpl;
 };
 
 #endif 
