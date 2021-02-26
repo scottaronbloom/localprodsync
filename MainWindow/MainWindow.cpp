@@ -856,17 +856,16 @@ void CMainWindow::slotRun()
     fRuntimeTimer.second = std::chrono::system_clock::now();
     fRuntimeTimer.first->start();
 
-    if ( fDataFile )
-    {
-        fImpl->log->clear();
-        auto retVal = fDataFile->run( fImpl->remoteUProdDir->text(), fImpl->rsyncServer->text(), fImpl->localProdDir->text(), fImpl->rsyncExec->text(), fImpl->bashExec->text(), fImpl->verbose->isChecked(), fImpl->norun->isChecked(), getDrivePrefix(), progress,
-                        [this]( const QString & msg )
-                        {
-                            appendToLog( msg );
-                        } );
-        if ( !retVal.first )
-            appendToLog( retVal.second );
-    }
+    fImpl->log->clear();
+    auto retVal = fDataFile->run( fImpl->remoteUProdDir->text(), fImpl->rsyncServer->text(), fImpl->localProdDir->text(), fImpl->rsyncExec->text(), fImpl->bashExec->text(), fImpl->verbose->isChecked(), fImpl->norun->isChecked(), getDrivePrefix(), progress,
+                    [this]( const QString & msg )
+                    {
+                        appendToLog( msg );
+                    } );
+    if ( !retVal.first )
+        appendToLog( retVal.second );
+
+    progress->deleteLater();
     setRunning( false );
 }
 
