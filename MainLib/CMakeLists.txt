@@ -24,37 +24,24 @@ cmake_minimum_required(VERSION 3.1)
 if(CMAKE_VERSION VERSION_LESS "3.7.0")
     set(CMAKE_INCLUDE_CURRENT_DIR ON)
 endif()
+project( MainLib )
 
-project(LocalProdSync) 
+include( include.cmake )
+include( ${CMAKE_SOURCE_DIR}/Project.cmake )
+find_package(Qt5 COMPONENTS Widgets Xml XmlPatterns REQUIRED)
+AddQtIncludes()
 
-SET(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/Modules ${CMAKE_MODULE_PATH})
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED true)
-find_package(Threads)
-find_package(Qt5 COMPONENTS Core Widgets Xml REQUIRED)
-find_package(Deploy REQUIRED)
-find_package(AddUnitTest REQUIRED)
-set_property( GLOBAL PROPERTY USE_FOLDERS ON )
-
-SET( CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/Install )
-
-add_subdirectory( MainWindow )
-add_subdirectory( MainLib )
-add_subdirectory( gui )
-add_subdirectory( cli )
-
-SET( CPACK_PACKAGE_VENDOR "Scott Aron Bloom" )
-SET( CPACK_PACKAGE_VERSION_MAJOR "0" )
-SET( CPACK_PACKAGE_VERSION_MINOR "1" )
-SET( CPACK_PACKAGE_VERSION_PATCH "0" )
-set( CPACK_NSIS_EXECUTABLES_DIRECTORY ".")
-set( CPACK_PACKAGE_EXECUTABLES "LocalProdSync;Visual Studio Project Maker" )
-set( CPACK_CREATE_DESKTOP_LINKS "LocalProdSync")
-#set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "CreateShortCut \\\"$DESKTOP\\\\Local Prod Sync Tool.lnk\\\" \\\"$INSTDIR\\\\LocalProdSync.exe\\\" ")
-
-set( CPACK_NSIS_MODIFY_PATH OFF)
-SET( CPACK_GENERATOR NSIS ZIP )
-SET( CPACK_NSIS_MUI_ICON ${CMAKE_SOURCE_DIR}/MainWindow/resources/application.ico )
-SET( CPACK_NSIS_MUI_UNIICON ${CMAKE_SOURCE_DIR}/MainWindow/resources/application.ico )
-include( CPack )
+add_library(MainLib STATIC
+    ${project_SRCS} 
+    ${project_H}  
+    ${qtproject_SRCS} 
+    ${qtproject_QRC} 
+    ${qtproject_QRC_SRCS} 
+    ${qtproject_UIS_H} 
+    ${qtproject_MOC_SRCS} 
+    ${qtproject_H} 
+    ${qtproject_UIS}
+    ${qtproject_QRC_SOURCES}
+    ${_CMAKE_FILES}
+)
+set_target_properties( MainLib PROPERTIES FOLDER Libs )

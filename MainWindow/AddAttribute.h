@@ -54,4 +54,4 @@ private:
     std::unique_ptr< Ui::CAddAttribute > fImpl;
 };
 
-#endif // _ALCULATOR_H
+#endif 

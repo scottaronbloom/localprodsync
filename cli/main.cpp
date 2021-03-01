@@ -20,9 +20,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "MainLib/Settings.h"
-#include "MainLib/VSProjectMaker.h"
-
 #include <QApplication>
 #include <QLabel>
 #include <QVariant>
@@ -34,14 +31,14 @@
 int main( int argc, char ** argv )
 {
     QApplication appl( argc, argv );
-    appl.setApplicationName( "VSProjectMaker" );
-    appl.setApplicationVersion( "0.9" );
+    appl.setApplicationName( "LocalProdSyncTool" );
+    appl.setApplicationVersion( "0.1" );
     appl.setOrganizationName( "Scott Aron Bloom" );
     appl.setOrganizationDomain( "www.towel42.com" );
 
-    Q_INIT_RESOURCE( MainLib );
+    //Q_INIT_RESOURCE( MainLib );
 
-    NVSProjectMaker::registerTypes();
+    //NVSProjectMaker::registerTypes();
 
     QCommandLineParser parser;
     parser.setApplicationDescription( "VS Project Maker CLI" );
@@ -71,39 +68,40 @@ int main( int argc, char ** argv )
     }
 
     auto settingsFile = parser.value( optionsFileOption );
-    NVSProjectMaker::CSettings settings;
-    if ( !settings.loadSettings( settingsFile ) )
-    {
-        std::cerr << "Options file not found\n";
-        return -1;
-    }
+    //NVSProjectMaker::CSettings settings;
+    //if ( !settings.loadSettings( settingsFile ) )
+    //{
+    //    std::cerr << "Options file not found\n";
+    //    return -1;
+    //}
 
-    auto clientDir = QDir( settings.getClientDir() );
-    if ( !clientDir.exists() )
-    {
-        std::cerr << "Client directory '" << clientDir.absolutePath().toStdString() << "' does not exist.\n";
-        return -1;
-    }
-    std::cout << "Finding directories\n";
-    if ( settings.loadSourceFiles( clientDir.absoluteFilePath( settings.getSourceRelDir() ), clientDir.absoluteFilePath( settings.getSourceRelDir() ), nullptr,
-         []( const QString & msg ) { std::cout << msg.toStdString() << "\n"; } ) )
-    {
-        std::cerr << "Could not load directories\n";
-        return -1;
-    }
-    settings.addInclDirs( settings.getResults()->fInclDirs );
+    //auto clientDir = QDir( settings.getClientDir() );
+    //if ( !clientDir.exists() )
+    //{
+    //    std::cerr << "Client directory '" << clientDir.absolutePath().toStdString() << "' does not exist.\n";
+    //    return -1;
+    //}
+    //std::cout << "Finding directories\n";
+    ////if ( settings.loadSourceFiles( clientDir.absoluteFilePath( settings.getSourceRelDir() ), clientDir.absoluteFilePath( settings.getSourceRelDir() ), nullptr,
+    ////     []( const QString & msg ) { std::cout << msg.toStdString() << "\n"; } ) )
+    ////{
+    ////    std::cerr << "Could not load directories\n";
+    ////    return -1;
+    ////}
+    ////settings.addInclDirs( settings.getResults()->fInclDirs );
 
-    std::cout
-        << "============================================" << "\n"
-        << settings.getResults()->getText( true ).toStdString() << "\n";
+    //std::cout
+    //    << "============================================" << "\n"
+    //    << settings.getResults()->getText( true ).toStdString() << "\n";
 
-    settings.generate( nullptr, nullptr,
-                       []( const QString & msg ) { std::cout << msg.toStdString() << "\n"; }
-    );
+    //settings.generate( nullptr, nullptr,
+    //                   []( const QString & msg ) { std::cout << msg.toStdString() << "\n"; }
+    //);
 
-    std::cout << "============================================" << "\n"
-        << "Running CMake" << "\n";
+    //std::cout << "============================================" << "\n"
+    //    << "Running CMake" << "\n";
 
-    QProcess process;
-    return settings.runCMake( []( const QString & outMsg ) { std::cout << outMsg.toStdString(); }, []( const QString & errMsg ) { std::cerr << errMsg.toStdString(); }, &process, { true, {} } );
+    //QProcess process;
+    //return settings.runCMake( []( const QString & outMsg ) { std::cout << outMsg.toStdString(); }, []( const QString & errMsg ) { std::cerr << errMsg.toStdString(); }, &process, { true, {} } );
+    return 0;
 }
